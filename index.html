@@ -1908,17 +1908,20 @@ const UI = (() => {
 
   function renderHeatmapSVG(sessions, year){
     const days = DOMAIN.heatmapData(sessions, year);
-    // Construir grid 7 filas × N columnas (semanas)
-    const startDate = new Date(year, 0, 1);
-    const startDay = startDate.getDay(); // 0=domingo
-    const totalDays = days.length;
-    const cols = Math.ceil((totalDays + startDay) / 7);
+    // Grid estilo GitHub: columnas = semanas (lun→dom), filas = días de la semana.
+    // Semana empieza en lunes (r=0) y termina en domingo (r=6).
+    const firstOfYear = new Date(year, 0, 1);
+    // getDay(): 0=domingo, 1=lunes, ... 6=sábado. Lo convertimos a lun=0..dom=6.
+    const jsDow = firstOfYear.getDay(); // 0=domingo
+    const startOffset = (jsDow + 6) % 7; // 0 si cae en lunes, 6 si cae en domingo
+    const totalDays = days.length; // 365 o 366
+    const cols = Math.ceil((totalDays + startOffset) / 7);
     let cellsHtml = '';
     let dayIdx = 0;
     for (let c = 0; c < cols; c++){
       for (let r = 0; r < 7; r++){
         const cellPos = c * 7 + r;
-        if (cellPos < startDay || dayIdx >= totalDays){
+        if (cellPos < startOffset || dayIdx >= totalDays){
           cellsHtml += '<div></div>';
         } else {
           const d = days[dayIdx];
@@ -1927,10 +1930,21 @@ const UI = (() => {
         }
       }
     }
-    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    // Etiquetas de meses: posicionadas en la columna real donde empieza cada mes.
+    const monthLabels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const monthSpans = [];
+    for (let m = 0; m < 12; m++){
+      const firstDow = (new Date(year, m, 1).getDay() + 6) % 7; // lun=0..dom=6
+      const daysBeforeMonth = (new Date(year, m, 1) - firstOfYear) / (1000 * 60 * 60 * 24);
+      const col = Math.floor((daysBeforeMonth + startOffset) / 7);
+      monthSpans.push({ name: monthLabels[m], col });
+    }
+    const monthsHtml = monthSpans.map(ms =>
+      `<span style="grid-column:${ms.col + 1};">${ms.name}</span>`
+    ).join('');
     return `<div class="heatmap-wrap">
-      <div class="heatmap-months">${months.map(m => `<span>${m}</span>`).join('')}</div>
-      <div class="heatmap-grid">${cellsHtml}</div>
+      <div class="heatmap-months" style="display:grid;grid-template-columns:repeat(${cols},11px);gap:2px;">${monthsHtml}</div>
+      <div class="heatmap-grid" style="grid-template-columns:repeat(${cols},11px);">${cellsHtml}</div>
       <div class="heat-legend">
         <span>Menos</span>
         <span class="heat-0"></span>
