@@ -1,0 +1,20 @@
+# Netlify local state
+.netlify/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node (por si acaso en el futuro)
+node_modules/
