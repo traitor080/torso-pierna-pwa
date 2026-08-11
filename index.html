@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="40X">
 <meta name="description" content="Registro de entrenamiento 40X con progresión y PRs">
-<title>40X — Registro · v1.5</title>
+<title>40X — Registro · v1.6</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -1892,6 +1892,12 @@ const UI = (() => {
       <div class="modal-section">
         <h3>Adherencia</h3>
         ${renderHeatmapSVG(sessions, STATE.heatmapYear || new Date().getFullYear())}
+        <div style="font-size:11.5px;color:var(--dim);margin-top:8px;text-align:center;">
+          ${sessions.filter(s => new Date(s.key + 'T00:00:00').getFullYear() === (STATE.heatmapYear || new Date().getFullYear())).length} sesiones en ${STATE.heatmapYear || new Date().getFullYear()}
+        </div>
+        <button class="action-btn" onclick="ACTIONS.openSessionsListModal()" style="width:100%;margin-top:10px;">
+          <span class="ico">📋</span>Ver todas las sesiones (diagnóstico)
+        </button>
       </div>
 
       <div class="modal-section">
@@ -1971,12 +1977,11 @@ const UI = (() => {
       for (let c = 0; c < cols; c++){
         const d = grid[c][r];
         if (d){
-          cellsInRow += `<div class="heatmap-cell heat-${d.level}" title="${d.date}: ${d.count} sesión${d.count !== 1 ? 'es' : ''}"></div>`;
+          cellsInRow += `<div class="heatmap-cell heat-${d.level}" data-date="${d.date}" data-level="${d.level}" title="${d.date}: ${d.count} sesión${d.count !== 1 ? 'es' : ''}"></div>`;
         } else {
           cellsInRow += `<div class="heatmap-cell heat-empty"></div>`;
         }
       }
-      // Solo mostrar etiqueta si la fila tiene contenido visible (evitar líneas vacías)
       const showLabel = true;
       rowsHtml += `<div class="heatmap-row"><span class="dow-label">${showLabel ? dowLabels[r] : ''}</span><div class="heatmap-row-cells">${cellsInRow}</div></div>`;
     }
@@ -2792,6 +2797,33 @@ const ACTIONS = (() => {
     STATE.heatmapYear = next;
     UI.renderStats();
   }
+  async function openSessionsListModal(){
+    const sessions = await STORAGE.getAllSessions();
+    const sorted = [...sessions].sort((a, b) => a.key < b.key ? 1 : -1);
+    const dowNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const html = `
+      <div style="padding:20px;max-height:80vh;overflow-y:auto;">
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;margin:0 0 14px;">📋 Sesiones guardadas</h2>
+        <p style="font-size:12.5px;color:var(--dim);margin-bottom:18px;">
+          Total: <strong style="color:var(--text);">${sorted.length}</strong> sesiones. Comprueba que las fechas y días de la semana coinciden con lo que recuerdas.
+        </p>
+        ${sorted.length === 0 ? '<div class="empty-note">Sin sesiones.</div>' : sorted.map(s => {
+          const d = new Date(s.key + 'T00:00:00');
+          const dow = dowNames[d.getDay()];
+          const isDateFuture = d > new Date();
+          return `<div class="pr-card" style="${isDateFuture ? 'border-color:var(--amber);' : ''}">
+            <div>
+              <div class="name">${dow} ${s.key}</div>
+              <div class="meta">${escapeHtml(s.data.dayType || '?')} · ${(s.data.entries || []).length} ejercicios · ${s.data.rating || '?'}★</div>
+              ${isDateFuture ? '<div style="font-size:11px;color:var(--amber);margin-top:4px;">⚠️ Fecha futura</div>' : ''}
+            </div>
+          </div>`;
+        }).join('')}
+        <button class="modal-close" onclick="UI.closeModal()" style="margin-top:14px;">Cerrar</button>
+      </div>`;
+    document.getElementById('modalCard').innerHTML = html;
+    document.getElementById('overlay').classList.add('active');
+  }
 
   return {
     addRestSeconds, cancelRestTimer, startRestFromFocus, toggleRestPause, startRestTimer, commitSet, okSet,
@@ -2806,7 +2838,7 @@ const ACTIONS = (() => {
     toggleHist, exportSessionCSV, closeModal,
     refreshBlock,
     exportBackup, importBackup,
-    openPRsModal, openCompareModal, compareTwoSessions, showStatsPanel, changeHeatmapYear
+    openPRsModal, openCompareModal, compareTwoSessions, showStatsPanel, changeHeatmapYear, openSessionsListModal
   };
 })();
 
