@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="40X">
 <meta name="description" content="Registro de entrenamiento 40X con progresión y PRs">
-<title>40X — Registro · v1.7</title>
+<title>40X — Registro · v1.8</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -423,6 +423,7 @@
     </div>
     <input type="file" id="importBackupInput" accept="application/json,.json" style="display:none;" onchange="ACTIONS.importBackup(event)">
     <button onclick="reseedNow(); return false;" id="reseedBtn" style="display:block;width:100%;margin-top:14px;padding:11px 0;border:1px dashed var(--line);border-radius:10px;color:var(--dim);font-size:11.5px;background:transparent;">🔧 Resembrar historial</button>
+    <button onclick="forceAppUpdate(); return false;" style="display:block;width:100%;margin-top:8px;padding:11px 0;border:1px dashed var(--amber);border-radius:10px;color:var(--amber);font-size:11.5px;background:transparent;">🔄 Forzar actualización de la app</button>
   </div>
   <div class="panel" id="panel-stats">
     <div id="statsContent"><div class="empty-note">Cargando…</div></div>
@@ -2911,6 +2912,31 @@ async function seedHistory(){
   STATE.sessionsCache = null;
 }
 
+// ── Forzar actualización de la app (desinstalar SW + recargar) ──
+async function forceAppUpdate(){
+  if (!confirm('¿Forzar la actualización de la app? Se borrará la caché del Service Worker y se recargará la página. Tus datos NO se pierden.')) return;
+  try {
+    // 1. Borrar todas las cachés
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    console.log('[forceUpdate] Cachés borradas:', keys);
+    // 2. Desregistrar el Service Worker
+    if (navigator.serviceWorker){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      console.log('[forceUpdate] SW desregistrados:', regs.length);
+    }
+    // 3. Limpiar localStorage SOLO de cosas de caché (no sesiones)
+    // (las sesiones están en session:* y NO las tocamos)
+    alert('Caché borrada. Recargando...');
+    window.location.reload(true);
+  } catch (e){
+    console.error('[forceUpdate] Error:', e);
+    alert('Error: ' + e.message + '. Recargando de todas formas...');
+    window.location.reload(true);
+  }
+}
+
 // ── Resiembra manual (botón en Historial) ──
 async function reseedNow(){
   console.log('[reseed] Forzando resiembra manual...');
@@ -3078,8 +3104,34 @@ if ('serviceWorker' in navigator){
   // Esperar a que cargue la página para no bloquear render
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('[PWA] SW registrado en:', reg.scope))
+      .then(reg => {
+        console.log('[PWA] SW registrado en:', reg.scope);
+        // Si hay un SW esperando, forzar su activación inmediata
+        if (reg.waiting){
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        // Escuchar actualizaciones
+        reg.addEventListener('updatefound', () => {
+          const newSw = reg.installing;
+          if (!newSw) return;
+          newSw.addEventListener('statechange', () => {
+            if (newSw.state === 'installed' && navigator.serviceWorker.controller){
+              console.log('[PWA] Nueva versión instalada, recargando...');
+              // Forzar activación
+              newSw.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+      })
       .catch(err => console.warn('[PWA] SW no registrado:', err.message));
+    // Cuando el SW tome el control, recargar la página automáticamente
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      console.log('[PWA] SW tomó el control, recargando...');
+      window.location.reload();
+    });
   });
 }
 
