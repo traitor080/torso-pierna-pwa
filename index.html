@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="40X">
 <meta name="description" content="Registro de entrenamiento 40X con progresión y PRs">
-<title>40X — Registro · v1.4</title>
+<title>40X — Registro · v1.5</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -71,9 +71,14 @@
   .ex-name{font-weight:600;font-size:15px;}
   .ex-target{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);white-space:nowrap;}
   .ex-note{font-size:11.5px;color:var(--dim);margin-bottom:11px;}
-  .set-row{display:grid;grid-template-columns:20px 1fr 1fr 32px;gap:8px;align-items:center;margin-bottom:7px;}
+  .set-row{display:grid;grid-template-columns:20px 1fr 1fr 36px 32px;gap:6px;align-items:center;margin-bottom:7px;}
   .set-row .snum{font-family:'JetBrains Mono',monospace;color:var(--dim2);font-size:12px;text-align:center;}
   .set-row input{width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 6px;font-family:'JetBrains Mono',monospace;font-size:13.5px;text-align:center;transition:border-color .15s;}
+  .ok-btn{width:36px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--dim);font-size:14px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .15s,border-color .15s,color .15s;}
+  .ok-btn:active{transform:scale(.92);}
+  .ok-btn.on{background:linear-gradient(135deg,var(--legsA-l),var(--legsA));border-color:transparent;color:#0b0e12;}
+  .set-row.done{opacity:.85;}
+  .set-row.done input{border-color:var(--legsA);}
   .fail-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--dim);font-size:12px;font-weight:700;}
   .fail-btn.on{background:var(--red);border-color:transparent;color:#2f0f0d;}
   .fail-slot{width:32px;}
@@ -155,8 +160,16 @@
 
   /* ── Heatmap (estilo GitHub) ── */
   .heatmap-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow);overflow-x:auto;}
-  .heatmap-grid{display:grid;grid-template-columns:repeat(53,11px);grid-auto-rows:11px;gap:2px;margin-top:8px;}
+  .heatmap-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;}
+  .hm-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .hm-nav-btn:active{transform:scale(.92);}
+  .hm-year{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);min-width:60px;text-align:center;}
+  .heatmap-grid{display:flex;flex-direction:column;gap:2px;margin-top:8px;}
+  .heatmap-row{display:flex;align-items:center;gap:6px;}
+  .dow-label{width:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim2);text-align:center;flex-shrink:0;}
+  .heatmap-row-cells{display:grid;grid-template-columns:repeat(53,11px);grid-auto-rows:11px;gap:2px;}
   .heatmap-cell{width:11px;height:11px;border-radius:2px;background:var(--surface-3);}
+  .heatmap-cell.heat-empty{visibility:hidden;}
   .heat-0{background:var(--surface-3);}
   .heat-1{background:rgba(139,189,143,.25);}
   .heat-2{background:rgba(139,189,143,.5);}
@@ -164,7 +177,7 @@
   .heat-4{background:rgba(139,189,143,1);}
   .heat-legend{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--dim);justify-content:flex-end;margin-top:8px;}
   .heat-legend span{width:11px;height:11px;border-radius:2px;display:inline-block;}
-  .heatmap-months{display:flex;justify-content:space-between;font-size:10px;color:var(--dim2);margin-bottom:4px;}
+  .heatmap-months{display:flex;justify-content:space-between;font-size:10px;color:var(--dim2);margin-bottom:4px;padding-left:20px;}
 
   /* ── Stat cards (KPIs) ── */
   .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
@@ -253,6 +266,7 @@
   /* ── Touch targets ≥ 44px (estándar Apple HIG / Material) ── */
   .tab,.action-btn,button{min-height:44px;}
   .set-row input{min-height:44px;font-size:15px;padding:11px 6px;}
+  .ok-btn{width:40px;height:40px;font-size:15px;}
   .fail-btn{width:40px;height:40px;}
   .cal-cell{min-height:48px;}
   .cal-nav button{padding:8px 16px;}
@@ -1460,14 +1474,22 @@ const UI = (() => {
     if (!container) return;
     const rows = STATE.form.data[exId] || [];
     const isGrouped = STATE.form.groupedWeight[exId]?.active;
+    const ex = DOMAIN.exDefById(exId);
+    const restSec = ex ? DOMAIN.parseRestSeconds(ex.rest) : 0;
+    const restLabel = restSec > 0 ? `${Math.floor(restSec / 60)}:${String(restSec % 60).padStart(2, '0')}` : '';
     container.innerHTML = rows.map((s, i) => {
       const isLast = i === rows.length - 1;
       const showFail = failRule === 'last' && isLast;
       const weightStyle = isGrouped ? 'opacity:.4;pointer-events:none;' : '';
-      return `<div class="set-row">
+      const isDone = !!(s.reps !== '' && s.weight > 0);
+      const rowCls = isDone ? 'set-row done' : 'set-row';
+      return `<div class="${rowCls}" data-ex="${exId}" data-i="${i}">
         <span class="snum">${i + 1}</span>
         <input type="number" inputmode="numeric" placeholder="reps" value="${s.reps}" onchange="ACTIONS.updateCell('${exId}',${i},'reps',this.value)" onblur="ACTIONS.commitSet('${exId}',${i})">
         <input type="number" inputmode="decimal" placeholder="kg" value="${s.weight}" style="${weightStyle}" onchange="ACTIONS.updateCell('${exId}',${i},'weight',this.value)" onblur="ACTIONS.commitSet('${exId}',${i})" onkeydown="if(event.key===' '){event.preventDefault();ACTIONS.startRestFromFocus('${exId}');}">
+        <button class="ok-btn ${isDone ? 'on' : ''}" onclick="ACTIONS.okSet('${exId}',${i},${isLast})" title="${isLast ? 'Última serie — no inicia descanso' : `Marca la serie como hecha y arranca descanso de ${restLabel}`}" aria-label="Serie hecha">
+          ${isLast ? '✓' : '⏱'}
+        </button>
         ${showFail ? `<button class="fail-btn ${s.fallo ? 'on' : ''}" onclick="ACTIONS.toggleFailCell('${exId}',${i})">F</button>` : '<span class="fail-slot"></span>'}
       </div>`;
     }).join('');
@@ -1868,8 +1890,8 @@ const UI = (() => {
       </div>
 
       <div class="modal-section">
-        <h3>Adherencia ${new Date().getFullYear()}</h3>
-        ${renderHeatmapSVG(sessions, new Date().getFullYear())}
+        <h3>Adherencia</h3>
+        ${renderHeatmapSVG(sessions, STATE.heatmapYear || new Date().getFullYear())}
       </div>
 
       <div class="modal-section">
@@ -1907,40 +1929,66 @@ const UI = (() => {
     // Grid estilo GitHub: columnas = semanas (lun→dom), filas = días de la semana.
     // Semana empieza en lunes (r=0) y termina en domingo (r=6).
     const firstOfYear = new Date(year, 0, 1);
-    // getDay(): 0=domingo, 1=lunes, ... 6=sábado. Lo convertimos a lun=0..dom=6.
-    const jsDow = firstOfYear.getDay(); // 0=domingo
-    const startOffset = (jsDow + 6) % 7; // 0 si cae en lunes, 6 si cae en domingo
-    const totalDays = days.length; // 365 o 366
+    const jsDow = firstOfYear.getDay();
+    const startOffset = (jsDow + 6) % 7;
+    const totalDays = days.length;
     const cols = Math.ceil((totalDays + startOffset) / 7);
-    let cellsHtml = '';
+    const dowLabels = ['L','M','X','J','V','S','D'];
+
+    // Construir grid de 2D para mapear correctamente día → fila de la semana
+    // (necesario porque los días vacíos iniciales hacen que el bucle lineal confunda filas)
+    const grid = [];
     let dayIdx = 0;
     for (let c = 0; c < cols; c++){
+      grid[c] = new Array(7).fill(null);
       for (let r = 0; r < 7; r++){
         const cellPos = c * 7 + r;
-        if (cellPos < startOffset || dayIdx >= totalDays){
-          cellsHtml += '<div></div>';
-        } else {
-          const d = days[dayIdx];
-          cellsHtml += `<div class="heatmap-cell heat-${d.level}" title="${d.date}: ${d.count} sesión${d.count !== 1 ? 'es' : ''}"></div>`;
+        if (cellPos >= startOffset && dayIdx < totalDays){
+          grid[c][r] = days[dayIdx];
           dayIdx++;
         }
       }
     }
-    // Etiquetas de meses: posicionadas en la columna real donde empieza cada mes.
+
+    // Etiquetas de meses: posicionadas en la columna real donde empieza cada mes
     const monthLabels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const monthSpans = [];
     for (let m = 0; m < 12; m++){
-      const firstDow = (new Date(year, m, 1).getDay() + 6) % 7; // lun=0..dom=6
-      const daysBeforeMonth = (new Date(year, m, 1) - firstOfYear) / (1000 * 60 * 60 * 24);
+      const fm = new Date(year, m, 1);
+      const daysBeforeMonth = Math.round((fm - firstOfYear) / (1000 * 60 * 60 * 24));
+      // Columna donde está el día 1 del mes m
       const col = Math.floor((daysBeforeMonth + startOffset) / 7);
       monthSpans.push({ name: monthLabels[m], col });
     }
     const monthsHtml = monthSpans.map(ms =>
       `<span style="grid-column:${ms.col + 1};">${ms.name}</span>`
     ).join('');
+
+    // Render: 7 filas, cada fila con su etiqueta de día a la izquierda + celdas de esa fila
+    let rowsHtml = '';
+    for (let r = 0; r < 7; r++){
+      let cellsInRow = '';
+      for (let c = 0; c < cols; c++){
+        const d = grid[c][r];
+        if (d){
+          cellsInRow += `<div class="heatmap-cell heat-${d.level}" title="${d.date}: ${d.count} sesión${d.count !== 1 ? 'es' : ''}"></div>`;
+        } else {
+          cellsInRow += `<div class="heatmap-cell heat-empty"></div>`;
+        }
+      }
+      // Solo mostrar etiqueta si la fila tiene contenido visible (evitar líneas vacías)
+      const showLabel = true;
+      rowsHtml += `<div class="heatmap-row"><span class="dow-label">${showLabel ? dowLabels[r] : ''}</span><div class="heatmap-row-cells">${cellsInRow}</div></div>`;
+    }
+
     return `<div class="heatmap-wrap">
-      <div class="heatmap-months" style="display:grid;grid-template-columns:repeat(${cols},11px);gap:2px;">${monthsHtml}</div>
-      <div class="heatmap-grid" style="grid-template-columns:repeat(${cols},11px);">${cellsHtml}</div>
+      <div class="heatmap-nav">
+        <button class="hm-nav-btn" onclick="ACTIONS.changeHeatmapYear(-1)" aria-label="Año anterior">◀</button>
+        <span class="hm-year">${year}</span>
+        <button class="hm-nav-btn" onclick="ACTIONS.changeHeatmapYear(1)" aria-label="Año siguiente" ${year >= new Date().getFullYear() ? 'disabled style="opacity:.3;pointer-events:none;"' : ''}>▶</button>
+      </div>
+      <div class="heatmap-months" style="display:grid;grid-template-columns:repeat(${cols},11px);">${monthsHtml}</div>
+      <div class="heatmap-grid">${rowsHtml}</div>
       <div class="heat-legend">
         <span>Menos</span>
         <span class="heat-0"></span>
@@ -2239,6 +2287,36 @@ const ACTIONS = (() => {
         UI.showToast(`Descanso ${Math.floor(restSec / 60)}:${String(restSec % 60).padStart(2, '0')}`, 'info');
       }
     }
+  }
+  // Botón explícito "✓/⏱" — más fiable que onblur en móvil.
+  // Marca la serie como hecha y dispara el timer si no es la última.
+  function okSet(exId, i, isLast){
+    if (!STATE.form.data[exId] || !STATE.form.data[exId][i]) return;
+    const st = STATE.form.data[exId][i];
+    // Si reps/peso están vacíos, solo marca visualmente y re-renderiza para que se vean los inputs
+    if (st.reps === '' || !st.weight){
+      UI.renderSetRows(exId, DOMAIN.exDefById(exId).failRule);
+      return;
+    }
+    if (isLast){
+      // Última serie → no hay descanso, solo feedback visual
+      try { if (navigator.vibrate) navigator.vibrate(80); } catch(e){}
+      UI.renderSetRows(exId, DOMAIN.exDefById(exId).failRule);
+      UI.renderFormSummary(STATE.form.day);
+      UI.renderSessionProgress();
+      return;
+    }
+    const ex = DOMAIN.exDefById(exId);
+    const restSec = DOMAIN.parseRestSeconds(ex.rest);
+    if (restSec > 0){
+      ACTIONS.startRestTimer(restSec, exId);
+      UI.showToast(`Descanso ${Math.floor(restSec / 60)}:${String(restSec % 60).padStart(2, '0')}`, 'info');
+    } else {
+      try { if (navigator.vibrate) navigator.vibrate(80); } catch(e){}
+    }
+    UI.renderSetRows(exId, ex.failRule);
+    UI.renderFormSummary(STATE.form.day);
+    UI.renderSessionProgress();
   }
   function toggleFailCell(exId, i){
     if (!STATE.form.data[exId]) return;
@@ -2704,9 +2782,19 @@ const ACTIONS = (() => {
     activateTab('stats');
     UI.renderStats();
   }
+  function changeHeatmapYear(delta){
+    if (!STATE.heatmapYear) STATE.heatmapYear = new Date().getFullYear();
+    const cur = new Date().getFullYear();
+    const next = STATE.heatmapYear + delta;
+    // No permitir ir más allá del año actual ni más de 5 años atrás
+    if (next > cur) return;
+    if (next < cur - 5) return;
+    STATE.heatmapYear = next;
+    UI.renderStats();
+  }
 
   return {
-    addRestSeconds, cancelRestTimer, startRestFromFocus, toggleRestPause, startRestTimer, commitSet,
+    addRestSeconds, cancelRestTimer, startRestFromFocus, toggleRestPause, startRestTimer, commitSet, okSet,
     activateTab,
     updateCell, toggleFailCell, addSet, removeSet, applySuggested,
     updateGroupedWeight, toggleGroupedWeight,
@@ -2718,7 +2806,7 @@ const ACTIONS = (() => {
     toggleHist, exportSessionCSV, closeModal,
     refreshBlock,
     exportBackup, importBackup,
-    openPRsModal, openCompareModal, compareTwoSessions, showStatsPanel
+    openPRsModal, openCompareModal, compareTwoSessions, showStatsPanel, changeHeatmapYear
   };
 })();
 

@@ -1,5 +1,5 @@
 // Service Worker — offline-first cache para la PWA
-const CACHE = 'tp-pwa-v4';
+const CACHE = 'tp-pwa-v5';
 const ASSETS = [
   './',
   './index.html',
