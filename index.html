@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="40X">
 <meta name="description" content="Registro de entrenamiento 40X con progresión y PRs">
-<title>40X — Registro · v1.3</title>
+<title>40X — Registro · v1.4</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -770,12 +770,8 @@ const STORAGE = (() => {
         banner.textContent = '⚠️ El guardado no está respondiendo como se espera. Cierra y vuelve a abrir esta app.';
         return false;
       }
-      if (!useNative){
-        banner.style.display = 'block';
-        banner.style.background = 'rgba(124,155,196,.15)';
-        banner.style.color = '#a3bbd9';
-        banner.textContent = 'ℹ️ Guardando en modo local de este navegador. Tus datos se quedan en este dispositivo.';
-      }
+      // localStorage persiste los datos siempre (modo normal de navegador).
+      // No se muestra banner informativo — el guardado es fiable y silencioso.
       return true;
     } catch (e){
       banner.style.display = 'block';
