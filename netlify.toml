@@ -1,0 +1,6 @@
+plugins = []
+headers = []
+redirects = []
+
+[build]
+  publish = "."
