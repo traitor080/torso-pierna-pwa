@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="40X">
 <meta name="description" content="Registro de entrenamiento 40X con progresión y PRs">
-<title>40X — Registro · v1.6</title>
+<title>40X — Registro · v1.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -168,11 +168,13 @@
   .heatmap-row{display:flex;align-items:center;gap:6px;}
   .dow-label{width:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim2);text-align:center;flex-shrink:0;}
   .heatmap-row-cells{display:grid;grid-template-columns:repeat(53,11px);grid-auto-rows:11px;gap:2px;}
-  .heatmap-cell{width:11px;height:11px;border-radius:2px;background:var(--surface-3);}
+  .heatmap-cell{width:11px;height:11px;border-radius:2px;background:transparent;transition:transform .1s;}
+  .heatmap-cell:not(.heat-empty):not([data-level="0"]){cursor:help;}
+  .heatmap-cell:not(.heat-empty):not([data-level="0"]):hover{transform:scale(1.3);z-index:2;position:relative;}
   .heatmap-cell.heat-empty{visibility:hidden;}
-  .heat-0{background:var(--surface-3);}
+  .heat-0{background:rgba(255,255,255,.04);}
   .heat-1{background:rgba(139,189,143,.25);}
-  .heat-2{background:rgba(139,189,143,.5);}
+  .heat-2{background:rgba(139,189,143,.5);box-shadow:inset 0 0 0 1px rgba(139,189,143,.3);}
   .heat-3{background:rgba(139,189,143,.75);}
   .heat-4{background:rgba(139,189,143,1);}
   .heat-legend{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--dim);justify-content:flex-end;margin-top:8px;}
