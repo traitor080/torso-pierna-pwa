@@ -1,7 +1,7 @@
 {
-  "name": "Torso / Pierna — Registro",
-  "short_name": "Torso/Pierna",
-  "description": "Registro de entrenamiento Torso/Pierna con progresión y PRs",
+  "name": "40X — Registro",
+  "short_name": "40X",
+  "description": "Registro de entrenamiento 40X con progresión y PRs",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
