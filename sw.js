@@ -1,5 +1,5 @@
-// Service Worker — offline-first cache para la PWA
-const CACHE = 'tp-pwa-v9';
+// Service Worker — offline-first cache + handler de timer de descanso en background
+const CACHE = 'tp-pwa-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,14 @@ const ASSETS = [
   './icon-512.png',
   './icon-maskable-512.png'
 ];
+
+// ── Estado del timer de descanso (persiste aunque la pestaña esté oculta) ──
+// Mantenemos los datos aquí en el SW para que el tiempo siga contando
+// incluso cuando el navegador suspende la pestaña.
+let restStartedAt = null;   // ms timestamp
+let restDuration = 0;       // segundos totales
+let restPaused = false;
+let restPausedRemaining = 0; // si está pausado, cuánto queda
 
 self.addEventListener('install', e => {
   // Forzar que el SW nuevo tome el control INMEDIATAMENTE sin esperar
@@ -35,7 +43,7 @@ self.addEventListener('activate', e => {
         // Avisar a todas las pestañas abiertas para que se recarguen
         return self.clients.matchAll({ type: 'window' }).then(clients => {
           clients.forEach(client => {
-            client.postMessage({ type: 'SW_UPDATED', version: 'v1.9' });
+            client.postMessage({ type: 'SW_UPDATED', version: 'v2.0' });
           });
         });
       })
@@ -43,9 +51,86 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('message', e => {
-  // Si la página nos manda SKIP_WAITING, forzamos activación inmediata
-  if (e.data && e.data.type === 'SKIP_WAITING'){
+  const d = e.data || {};
+
+  // Pedido de la página para saltarse el "waiting" del SW
+  if (d.type === 'SKIP_WAITING'){
     self.skipWaiting();
+    return;
+  }
+
+  // ── Timer de descanso: iniciar / pausar / cancelar / consultar ──
+  if (d.type === 'START_REST_TIMER'){
+    restStartedAt = d.startedAt || Date.now();
+    restDuration = d.duration || 0;
+    restPaused = false;
+    restPausedRemaining = 0;
+    console.log('[SW] Timer de descanso iniciado:', restDuration, 's');
+    return;
+  }
+  if (d.type === 'PAUSE_REST_TIMER'){
+    if (restStartedAt && !restPaused){
+      restPausedRemaining = Math.max(0, restDuration - Math.floor((Date.now() - restStartedAt) / 1000));
+      restPaused = true;
+    }
+    return;
+  }
+  if (d.type === 'RESUME_REST_TIMER'){
+    if (restPaused && restPausedRemaining > 0){
+      restStartedAt = Date.now();
+      restDuration = restPausedRemaining;
+      restPaused = false;
+      restPausedRemaining = 0;
+    }
+    return;
+  }
+  if (d.type === 'CANCEL_REST_TIMER'){
+    restStartedAt = null;
+    restDuration = 0;
+    restPaused = false;
+    restPausedRemaining = 0;
+    return;
+  }
+  if (d.type === 'ADD_REST_SECONDS'){
+    if (restStartedAt){
+      if (restPaused){
+        restPausedRemaining = Math.max(0, restPausedRemaining + (d.seconds || 0));
+      } else {
+        // Reanclamos restStartedAt para que el "duration" actual quede en
+        // restDuration + delta sin perder el tiempo ya transcurrido.
+        const elapsed = Math.floor((Date.now() - restStartedAt) / 1000);
+        const newDuration = Math.max(elapsed, restDuration + (d.seconds || 0));
+        restDuration = newDuration;
+      }
+    }
+    return;
+  }
+  if (d.type === 'GET_REST_TIMER'){
+    let remaining = 0;
+    if (restStartedAt){
+      if (restPaused){
+        remaining = restPausedRemaining;
+      } else {
+        remaining = Math.max(0, restDuration - Math.floor((Date.now() - restStartedAt) / 1000));
+      }
+    }
+    const target = restPaused ? restPausedRemaining : restDuration;
+    const reply = {
+      type: 'REST_TIMER_TICK',
+      remaining,
+      target,
+      paused: restPaused,
+      active: !!restStartedAt
+    };
+    if (e.source && e.source.postMessage){
+      e.source.postMessage(reply);
+    } else {
+      // Fallback: enviar a todos los clientes
+      self.clients.matchAll({ type: 'window' }).then(cls => {
+        cls.forEach(c => c.postMessage(reply));
+      });
+    }
+    return;
   }
 });
 
