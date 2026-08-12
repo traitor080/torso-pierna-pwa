@@ -1,5 +1,5 @@
 // Service Worker — offline-first cache para la PWA
-const CACHE = 'tp-pwa-v8';
+const CACHE = 'tp-pwa-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -35,7 +35,7 @@ self.addEventListener('activate', e => {
         // Avisar a todas las pestañas abiertas para que se recarguen
         return self.clients.matchAll({ type: 'window' }).then(clients => {
           clients.forEach(client => {
-            client.postMessage({ type: 'SW_UPDATED', version: 'v1.7' });
+            client.postMessage({ type: 'SW_UPDATED', version: 'v1.9' });
           });
         });
       })
